@@ -281,8 +281,15 @@ def ablak(o, a, b):
     savok = []
     for (sa, sb) in o['segs']:
         if a <= sa < b:
-            savok.append(dict(tol=sa, ig=sb, gyart=[dict(recept=rlabel(r['id']), db=q, esely=p)
-                                                   for (x, y, r, q, p) in o['point'] if x == sa]))
+            sg = [dict(recept=rlabel(r['id']), db=q, esely=p) for (x, y, r, q, p) in o['point'] if x == sa]
+            sig = sorted((g['recept'], g['esely']) for g in sg)
+            prev = savok[-1] if savok else None
+            if prev and prev['ig'] == sa and sorted((g['recept'], g['esely']) for g in prev['gyart']) == sig:
+                prev['ig'] = sb                 # azonos recept és esély: összevonjuk az előzővel
+                for g, h in zip(sorted(prev['gyart'], key=lambda g: g['recept']), sorted(sg, key=lambda g: g['recept'])):
+                    g['db'] += h['db']
+            else:
+                savok.append(dict(tol=sa, ig=sb, gyart=sg))
     def rawrows(d):
         rows = []
         for n, q in sorted(d.items(), key=lambda x: -x[1]):

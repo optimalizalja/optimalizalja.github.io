@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>West Kiszámolja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+</head>
+<body>
+<div id="loader" class="loader">
+  <div class="loader-box">
+    <h1>West Kiszámolja</h1>
+    <p class="loader-sub">A tervező a böngésződben fut. Az első betöltés kb. 10–30 másodperc, utána a böngésző gyorsítótárából gyorsabban indul.</p>
+    <ol id="steps" class="steps">
+      <li data-k="py">Python környezet letöltése (Pyodide)</li>
+      <li data-k="pkg">Matematikai csomagok betöltése (numpy, scipy)</li>
+      <li data-k="data">Receptek és munkaadatok letöltése</li>
+      <li data-k="init">Tervező indítása</li>
+    </ol>
+    <div class="pbar"><i id="pbar"></i></div>
+    <div id="loadMsg" class="loader-msg">Indulás…</div>
+  </div>
+</div>
+<div id="busy" class="busy hidden"><div>Számolás…</div></div>
+<header class="top">
+  <div class="brand">
+    <h1>West Kiszámolja</h1>
+    <p>Szakmatervező · a teljes út optimális, a lista mindig a következő lépést mutatja</p>
+  </div>
+</header>
+
+<main>
+  <section class="panel controls">
+    <div class="field">
+      <label for="szakma">Szakma</label>
+      <select id="szakma">
+        <option value="1">Tábori szakács</option>
+        <option value="2">Sarlatán</option>
+        <option value="3" selected>Kovács</option>
+        <option value="4">Istállómester</option>
+      </select>
+    </div>
+
+    <fieldset class="win big">
+      <legend>Teljes út</legend>
+      <div class="field narrow"><label for="start">Kezdőszint</label><input id="start" type="number" min="0" max="999" value="0"></div>
+      <span class="dash">→</span>
+      <div class="field narrow"><label for="cel">Célszint</label><input id="cel" type="number" min="1" max="1000" value="700"></div>
+    </fieldset>
+
+    <fieldset class="win small">
+      <legend>Most ezt mutasd</legend>
+      <div class="field narrow"><label for="wa">Tól</label><input id="wa" type="number" min="0" max="999" placeholder="teljes"></div>
+      <span class="dash">→</span>
+      <div class="field narrow"><label for="wb">Ig</label><input id="wb" type="number" min="1" max="1000" placeholder="teljes"></div>
+    </fieldset>
+
+    <div class="field">
+      <label>Optimalizálás</label>
+      <div class="seg" id="celfv">
+        <button type="button" data-v="darab" class="on">Legkevesebb darab</button>
+        <button type="button" data-v="ora">Legkevesebb munkaóra</button>
+      </div>
+    </div>
+
+    <label class="check"><input id="blokk" type="checkbox"> Blokkidős receptek is</label>
+    <button id="kizarBtn" class="ghost" type="button">Receptek kizárása <span id="kizarDb"></span></button>
+    <button id="go" class="primary" type="button">Tervezés</button>
+    <div id="kizarPanel" class="kizar hidden"></div>
+  </section>
+
+  <div id="hiba" class="hiba hidden"></div>
+
+  <section id="eredmeny" class="hidden">
+    <div class="stats">
+      <div class="stat big"><span id="sMost">–</span><small id="sMostL">szedett alapanyag most</small></div>
+      <div class="stat"><span id="sTeljes">–</span><small id="sTeljesL">alapanyag a teljes úton</small></div>
+    </div>
+
+    <div class="grid2">
+      <div class="col">
+        <div class="panel">
+          <div class="phead">
+            <h2>Most kell</h2>
+            <button class="ghost small" id="copyMost" type="button">Másolás</button>
+          </div>
+          <table id="tSzedett" class="tbl"></table>
+          <div id="raktarWrap" class="sub hidden">
+            <h3>Raktárból (korábbi lépésekből megmaradt)</h3>
+            <div id="raktar" class="pills"></div>
+          </div>
+        </div>
+        <div id="opcWrap" class="panel opt hidden">
+          <div class="phead">
+            <h2>Opcionális · előre legyártható</h2>
+            <button class="ghost small" id="copyOpc" type="button">Másolás</button>
+          </div>
+          <p class="note">Ezekből a termékekből később úgyis többet kell gyártani, mint amennyi most pontot ad. Ha most több alapanyagod van, előre legyárthatod őket.</p>
+          <div id="elore" class="pills"></div>
+          <table id="tOpc" class="tbl"></table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="phead"><h2>Ütemterv – pontszerzés</h2></div>
+        <table id="tSavok" class="tbl"></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><h2>Gyártások ebben a szakaszban</h2></div>
+      <table id="tGyart" class="tbl"></table>
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h2>Anyagáramlás</h2>
+        <label class="check inline"><input id="showOpc" type="checkbox"> Előre gyárthatók mutatása</label>
+      </div>
+      <div class="legend">
+        <span><i class="sw szedett"></i>szedett</span>
+        <span><i class="sw raktar"></i>raktárból</span>
+        <span><i class="sw pont"></i>pontért gyártott</span>
+        <span><i class="sw pot"></i>pótgyártás</span>
+        <span><i class="sw mas"></i>más szakma</span>
+        <span><i class="sw elore"></i>előre (opcionális)</span>
+        <span><i class="sw kesobb"></i>később használod</span>
+        <span><i class="sw veg"></i>végtermék</span>
+      </div>
+      <div class="sankey-wrap"><div id="sankey"></div></div>
+    </div>
+  </section>
+</main>
+<footer class="foot">
+  Adatforrás: <a href="https://tw-calc.net" target="_blank" rel="noopener">TW-Calc</a> (receptek, tárgyak) ·
+  <a href="https://tw-db.info" target="_blank" rel="noopener">tw-db.info</a> (munkák, dropesélyek).
+  Várható értékkel számol: nagy esély 96%, kis esély 50%. Nem hivatalos rajongói eszköz.
+</footer>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

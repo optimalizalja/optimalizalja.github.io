@@ -176,7 +176,7 @@ async function boot() {
     step('data', 'Adatfájlok letöltése…');
     for (const f of ['planner.py', 'twcalc_data.json', 'twdb_jobs.json']) {
       $('loadMsg').textContent = f + ' letöltése…';
-      const txt = await (await fetch('py/' + f + '?v=1')).text();
+      const txt = await (await fetch('py/' + f, { cache: 'no-cache' })).text();
       pyodide.FS.writeFile('/home/pyodide/' + f, txt);
     }
     step('init', 'Tervező indítása…');

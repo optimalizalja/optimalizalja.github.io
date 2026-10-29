@@ -1,4 +1,4 @@
-// West Kiszámolja – felület (v2: nagy és kis ablak)
+// Optimalizálja – felület (v2: nagy és kis ablak)
 const $ = (id) => document.getElementById(id);
 const fmt = (x) => Math.round(x).toLocaleString('hu-HU');
 const COLOR = { szedett: '#6f8a5a', raktar: '#3f8585', pont: '#c9952f', pot: '#4f6b7a', mas: '#7a4f74',

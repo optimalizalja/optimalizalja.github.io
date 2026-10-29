@@ -1,4 +1,4 @@
-# West Kiszámolja – szakmatervező (webes verzió)
+# Optimalizálja – szakmatervező (webes verzió)
 
 The West szakmatervező: a legkevesebb szedett alapanyaggal (vagy munkával) a célszintig.
 A teljes Python-motor a böngészőben fut [Pyodide](https://pyodide.org) segítségével, szerver nem kell.

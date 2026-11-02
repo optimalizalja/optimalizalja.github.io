@@ -171,3 +171,6 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--ink-2); font-weight: 600; }
   button.primary { margin-left: 0; width: 100%; } #sankey { min-width: 900px; } .sankey-wrap { overflow-x: auto; }
   .stats { grid-template-columns: 1fr; }
 }
+
+.chip.blk { background: #eadcf0; color: #5b3557; }
+.chip.blk.forced { background: #f7d9cf; color: #7a2a14; }

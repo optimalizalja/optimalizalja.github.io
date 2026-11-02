@@ -53,8 +53,9 @@ def is_event(r):
 #  1) LP
 # ======================================================================
 def plan(szakma, start=0, cel=700, blokkidos=False, kizart=(), extra_bps=(), cel_fv='darab'):
-    rec = [r for r in R if not is_event(r) and r['id'] not in kizart
-           and (blokkidos or not r['blokkido'])]
+    # A blokkidős receptek kikapcsolva is bent maradnak, de csak ott kapnak pontszerző
+    # változót, ahol abban a sávban nincs más pontot adó saját recept (lásd lent).
+    rec = [r for r in R if not is_event(r) and r['id'] not in kizart]
     craftable = {r['termek'] for r in rec}
     def ok(i): return i in craftable or T.get(i, {}).get('tipus') in ('mapdrop', 'jobdrop')
     changed = True
@@ -71,12 +72,22 @@ def plan(szakma, start=0, cel=700, blokkidos=False, kizart=(), extra_bps=(), cel
                           if v is not None and start < v < cel} | {v for v in extra_bps if start < v < cel}
     bps = sorted(bps); segs = list(zip(bps[:-1], bps[1:]))
 
+    # kényszer-sávok: ahol csak blokkidős saját recept ad pontot
+    kenyszer = set()
+    for si, (a, b) in enumerate(segs):
+        if not any(esely(r, a) > 0 and not r['blokkido'] for r in own):
+            kenyszer.add(si)
+
     var = []
     for r in own:
         for si, (a, b) in enumerate(segs):
-            if esely(r, a) > 0: var.append(('x', r, si))
-        var.append(('g', r, None))
-    for r in other: var.append(('f', r, None))
+            if esely(r, a) > 0 and (blokkidos or not r['blokkido'] or si in kenyszer):
+                var.append(('x', r, si))
+        if blokkidos or not r['blokkido']:
+            var.append(('g', r, None))
+    for r in other:
+        if blokkidos or not r['blokkido']:
+            var.append(('f', r, None))
     raws = sorted({i for r in own + other for i in r['alapanyag'] if i not in craftable})
     for i in raws: var.append(('gy', i, None))
     N = len(var)
@@ -111,6 +122,8 @@ def plan(szakma, start=0, cel=700, blokkidos=False, kizart=(), extra_bps=(), cel
 
     # melyik recepttel gyártjuk az egyes köztes termékeket pótlólag
     recipe_of = {}
+    for r in own + other:
+        if blokkidos or not r['blokkido']: recipe_of.setdefault(r['termek'], r)
     for r in own + other: recipe_of.setdefault(r['termek'], r)
     for k, (t, r, s) in enumerate(var):
         if t in ('g', 'f') and X[k] > 1e-6: recipe_of[r['termek']] = r
@@ -118,7 +131,10 @@ def plan(szakma, start=0, cel=700, blokkidos=False, kizart=(), extra_bps=(), cel
     for k, (t, r, s) in enumerate(var):
         if t == 'x' and X[k] > 1e-6:
             point.append((segs[s][0], segs[s][1], r, float(X[k]), esely(r, segs[s][0])))
-    return dict(szakma=szakma, start=start, cel=cel, point=point, recipe_of=recipe_of, segs=segs)
+    kenyszer_pont = set() if blokkidos else \
+        {(segs[si][0], r['id']) for (t, r, si) in var if t == 'x' and si in kenyszer and r['blokkido']}
+    return dict(szakma=szakma, start=start, cel=cel, point=point, recipe_of=recipe_of, segs=segs,
+                kenyszer=kenyszer_pont)
 
 
 def esely(r, L):
@@ -281,10 +297,12 @@ def ablak(o, a, b):
     savok = []
     for (sa, sb) in o['segs']:
         if a <= sa < b:
-            sg = [dict(recept=rlabel(r['id']), db=q, esely=p) for (x, y, r, q, p) in o['point'] if x == sa]
-            sig = sorted((g['recept'], g['esely']) for g in sg)
+            sg = [dict(recept=rlabel(r['id']), db=q, esely=p, blokkido=r['blokkido'] or 0,
+                       kenyszer=(x, r['id']) in o['kenyszer'])
+                  for (x, y, r, q, p) in o['point'] if x == sa]
+            sig = sorted((g['recept'], g['esely'], g['kenyszer']) for g in sg)
             prev = savok[-1] if savok else None
-            if prev and prev['ig'] == sa and sorted((g['recept'], g['esely']) for g in prev['gyart']) == sig:
+            if prev and prev['ig'] == sa and sorted((g['recept'], g['esely'], g['kenyszer']) for g in prev['gyart']) == sig:
                 prev['ig'] = sb                 # azonos recept és esély: összevonjuk az előzővel
                 for g, h in zip(sorted(prev['gyart'], key=lambda g: g['recept']), sorted(sg, key=lambda g: g['recept'])):
                     g['db'] += h['db']

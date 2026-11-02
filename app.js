@@ -70,7 +70,7 @@ function render(r) {
 
   $('tSavok').innerHTML = '<tr><th>Szint</th><th>Mit gyárts pontért</th></tr>' +
     r.savok.map(s => `<tr><td class="sav">${s.tol}–${s.ig}</td><td>${s.gyart.map(g =>
-      `<span class="item">${g.recept} <b>${fmt(g.db)}</b><span class="chip ${g.esely > .9 ? 'p96' : 'p50'}">${Math.round(g.esely * 100)}%</span></span>`).join('')}</td></tr>`).join('');
+      `<span class="item">${g.recept} <b>${fmt(g.db)}</b><span class="chip ${g.esely > .9 ? 'p96' : 'p50'}">${Math.round(g.esely * 100)}%</span>${blokkChip(g)}</span>`).join('')}</td></tr>`).join('');
 
   $('tGyart').innerHTML = '<tr><th>Termék</th><th>Szakma</th><th class="n">Szint</th><th class="n">Pontért</th><th class="n">Pótgyártás</th><th class="n">Most összesen</th><th class="n">Előre (opc.)</th></tr>' +
     r.gyartas.filter(g => g.pont + g.pot > .5 || g.elore > .5).map(g => `<tr>
@@ -79,6 +79,14 @@ function render(r) {
       <td class="n"><b>${g.pont + g.pot > .5 ? fmt(g.pont + g.pot) : '–'}</b></td><td class="n muted">${g.elore > .5 ? fmt(g.elore) : '–'}</td></tr>`).join('');
 
   drawSankey(r);
+}
+
+function blokkChip(g) {
+  if (!g.blokkido) return '';
+  const nap = g.blokkido / 86400, ido = nap >= 1 ? `${+nap.toFixed(1)} nap` : `${Math.round(g.blokkido / 3600)} óra`;
+  const tip = g.kenyszer ? 'Ebben a sávban nincs más pontot adó recept, ezért került be a blokkidős recept.'
+                         : 'Blokkidős recept: két gyártás között várni kell.';
+  return `<span class="chip blk${g.kenyszer ? ' forced' : ''}" title="${tip}">⏳ blokkidő: ${ido}${g.kenyszer ? ' · nincs más' : ''}</span>`;
 }
 
 // ---------- másolás ----------
